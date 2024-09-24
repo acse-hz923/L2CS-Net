@@ -3,6 +3,7 @@ import pathlib
 import numpy as np
 import cv2
 import time
+from collections import deque
 
 import torch
 import torch.nn as nn
@@ -54,15 +55,20 @@ if __name__ == '__main__':
         device = select_device(args.device, batch_size=1)
     )
      
-    cap = cv2.VideoCapture(cam)
+    #cap = cv2.VideoCapture(cam)
+    camera_url = 'http://192.168.10.245/leimCam/20240904/10'
+    cap = cv2.VideoCapture(camera_url)
 
     # Check if the webcam is opened correctly
     if not cap.isOpened():
         raise IOError("Cannot open webcam")
 
+    window_size = 5
+    pitch_window = deque(maxlen=window_size)
+    yaw_window = deque(maxlen=window_size)
+
     with torch.no_grad():
         while True:
-
             # Get frame
             success, frame = cap.read()    
             start_fps = time.time()  
@@ -70,18 +76,44 @@ if __name__ == '__main__':
             if not success:
                 print("Failed to obtain frame")
                 time.sleep(0.1)
-
+            
+            pitch_threshold = 20  
+            yaw_threshold = -25
+            
             # Process frame
             results = gaze_pipeline.step(frame)
+            if results.pitch is not None:
+                for i in range(len(results.pitch)):
+                    pitch = results.pitch[i]
+                    yaw = results.yaw[i]
+                    location = results.bboxes[i]
+                    center_x = int((location[0] + location[2]) / 2)
+                    center_y = int((location[1] + location[3]) / 2)
+                    center = [center_x, center_y]
 
-            # Visualize output
+                    pitch_deg = np.degrees(pitch)
+                    yaw_deg = np.degrees(yaw)
+                    
+                    pitch_window.append(pitch_deg)
+                    yaw_window.append(yaw_deg)
+
+                    avg_pitch = np.mean(pitch_window)
+                    avg_yaw = np.mean(yaw_window)
+
+                    print(f"目标{i+1}: pitch: {avg_pitch:.3f}, yaw: {avg_yaw:.3f}, location: {center}")
+                    
+                    if abs(avg_pitch) < pitch_threshold and 15 > avg_yaw > yaw_threshold:
+                        print(f"目标{i+1} 正在注视摄像头")
+                    else:
+                        print(f"目标{i+1} 未注视摄像头")
+                        
             frame = render(frame, results)
-           
+            
             myFPS = 1.0 / (time.time() - start_fps)
             cv2.putText(frame, 'FPS: {:.1f}'.format(myFPS), (10, 20),cv2.FONT_HERSHEY_COMPLEX_SMALL, 1, (0, 255, 0), 1, cv2.LINE_AA)
 
             cv2.imshow("Demo",frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
-            success,frame = cap.read()  
+            success,frame = cap.read()
     

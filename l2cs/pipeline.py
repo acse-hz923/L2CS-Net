@@ -57,7 +57,6 @@ class Pipeline:
 
         if self.include_detector:
             faces = self.detector(frame)
-
             if faces is not None: 
                 for box, landmark, score in faces:
 
@@ -66,14 +65,10 @@ class Pipeline:
                         continue
 
                     # Extract safe min and max of x,y
-                    x_min=int(box[0])
-                    if x_min < 0:
-                        x_min = 0
-                    y_min=int(box[1])
-                    if y_min < 0:
-                        y_min = 0
-                    x_max=int(box[2])
-                    y_max=int(box[3])
+                    x_min = max(int(box[0]), 0)
+                    y_min = max(int(box[1]), 0)
+                    x_max = int(box[2])
+                    y_max = int(box[3]) 
                     
                     # Crop image
                     img = frame[y_min:y_max, x_min:x_max]
@@ -85,25 +80,45 @@ class Pipeline:
                     bboxes.append(box)
                     landmarks.append(landmark)
                     scores.append(score)
-
-                # Predict gaze
-                pitch, yaw = self.predict_gaze(np.stack(face_imgs))
+                
+                if len(face_imgs) > 0:
+                    # Predict gaze
+                    pitch, yaw = self.predict_gaze(np.stack(face_imgs))
+                else:
+                    print("No face detected, skipping gaze prediction.")
+                    pitch, yaw = None, None
 
             else:
-
+                print("No faces detected in the frame.")
                 pitch = np.empty((0,1))
                 yaw = np.empty((0,1))
 
         else:
             pitch, yaw = self.predict_gaze(frame)
 
+        if len(bboxes) == 0:
+            bboxes = np.empty((0, 4))
+            
+        else:  
+            bboxes = np.stack(bboxes)
+            
+            
+        if len(landmarks) == 0:
+            landmarks = np.empty((0, 1)) 
+        else:
+            landmarks = np.stack(landmarks)
+
+        if len(scores) == 0:
+            scores = np.empty((0, 1))
+        else:
+            scores = np.stack(scores)
         # Save data
         results = GazeResultContainer(
             pitch=pitch,
             yaw=yaw,
-            bboxes=np.stack(bboxes),
-            landmarks=np.stack(landmarks),
-            scores=np.stack(scores)
+            bboxes=bboxes,
+            landmarks=landmarks,
+            scores=scores
         )
 
         return results
