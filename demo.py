@@ -1,7 +1,6 @@
 import argparse
 import pathlib
 import numpy as np
-import cv2
 import time
 from collections import deque
 
@@ -18,6 +17,7 @@ from PIL import Image, ImageOps
 from face_detection import RetinaFace
 
 from l2cs import select_device, draw_gaze, getArch, Pipeline, render
+import cv2
 
 CWD = pathlib.Path.cwd()
 
@@ -36,7 +36,7 @@ def parse_args():
         default=0, type=int)
     parser.add_argument(
         '--arch',dest='arch',help='Network architecture, can be: ResNet18, ResNet34, ResNet50, ResNet101, ResNet152',
-        default='ResNet50', type=str)
+        default='ResNet18', type=str)
 
     args = parser.parse_args()
     return args
@@ -54,10 +54,11 @@ if __name__ == '__main__':
         arch='ResNet50',
         device = select_device(args.device, batch_size=1)
     )
-     
-    #cap = cv2.VideoCapture(cam)
-    camera_url = 'http://192.168.10.245/leimCam/20240904/10'
-    cap = cv2.VideoCapture(camera_url)
+    
+    video_path = 'video/video02.mp4'
+    cap = cv2.VideoCapture(video_path)
+    #camera_url = 'http://192.168.10.245/leimCam/20240904/10'
+    #cap = cv2.VideoCapture(camera_url)
 
     # Check if the webcam is opened correctly
     if not cap.isOpened():
@@ -77,7 +78,7 @@ if __name__ == '__main__':
                 print("Failed to obtain frame")
                 time.sleep(0.1)
             
-            pitch_threshold = 20  
+            pitch_threshold = 25  
             yaw_threshold = -25
             
             # Process frame
@@ -106,7 +107,7 @@ if __name__ == '__main__':
                         print(f"目标{i+1} 正在注视摄像头")
                     else:
                         print(f"目标{i+1} 未注视摄像头")
-                        
+    
             frame = render(frame, results)
             
             myFPS = 1.0 / (time.time() - start_fps)
@@ -115,5 +116,8 @@ if __name__ == '__main__':
             cv2.imshow("Demo",frame)
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
+            
             success,frame = cap.read()
+    cap.release()
+    cv2.destroyAllWindows()
     
