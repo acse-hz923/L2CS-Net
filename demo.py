@@ -27,7 +27,7 @@ def parse_args():
         description='Gaze evalution using model pretrained with L2CS-Net on Gaze360.')
     parser.add_argument(
         '--device',dest='device', help='Device to run model: cpu or gpu:0',
-        default="cpu", type=str)
+        default="0", type=str)
     parser.add_argument(
         '--snapshot',dest='snapshot', help='Path of model snapshot.', 
         default='output/snapshots/L2CS-gaze360-_loader-180-4/_epoch_55.pkl', type=str)
@@ -60,6 +60,7 @@ if __name__ == '__main__':
     #camera_url = 'http://192.168.10.245/leimCam/20240904/10'
     #cap = cv2.VideoCapture(camera_url)
 
+
     # Check if the webcam is opened correctly
     if not cap.isOpened():
         raise IOError("Cannot open webcam")
@@ -81,6 +82,7 @@ if __name__ == '__main__':
             pitch_threshold = 25  
             yaw_threshold = -25
             
+
             # Process frame
             results = gaze_pipeline.step(frame)
             if results.pitch is not None:
